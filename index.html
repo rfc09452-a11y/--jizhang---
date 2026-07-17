@@ -77,15 +77,13 @@ td{padding:10px;border-bottom:1px solid #eee}.ar{text-align:right}.ac{text-align
 <div style="display:flex;gap:8px;flex-wrap:wrap">
 <div style="flex:1;min-width:180px;border:1.5px solid var(--bd);border-radius:8px;padding:8px;background:#fafbfc">
 <label style="font-size:11px;font-weight:600;color:var(--p);display:flex;align-items:center;gap:4px"><input type="checkbox" id="flGL" checked style="width:14px;height:14px">公链</label>
-<input type="text" id="flLinkGL" class="in" placeholder="公链备注" style="width:100%;height:32px;font-size:11px;margin-top:4px">
-<input list="flListGL" id="flSelGL" class="in" placeholder="选已存" style="width:100%;height:28px;font-size:10px">
+<input type="text" id="flLinkGL" class="in" placeholder="公链备注" list="flListGL" style="width:100%;height:32px;font-size:11px;margin-top:4px">
 <datalist id="flListGL"></datalist>
 <div style="display:flex;gap:4px;margin-top:4px"><button id="flSaveGL" class="btn-sm" style="font-size:9px;padding:0 6px;height:24px">保存</button><button id="flDelGL" class="btn-sm" style="font-size:9px;padding:0 6px;height:24px">删除</button></div>
 </div>
 <div style="flex:1;min-width:180px;border:1.5px solid var(--bd);border-radius:8px;padding:8px;background:#fafbfc">
 <label style="font-size:11px;font-weight:600;color:#2563eb;display:flex;align-items:center;gap:4px"><input type="checkbox" id="flHD" style="width:14px;height:14px">蝴蝶</label>
-<input type="text" id="flLinkHD" class="in" placeholder="蝴蝶备注" style="width:100%;height:32px;font-size:11px;margin-top:4px">
-<input list="flListHD" id="flSelHD" class="in" placeholder="选已存" style="width:100%;height:28px;font-size:10px">
+<input type="text" id="flLinkHD" class="in" placeholder="蝴蝶备注" list="flListHD" style="width:100%;height:32px;font-size:11px;margin-top:4px">
 <datalist id="flListHD"></datalist>
 <div style="display:flex;gap:4px;margin-top:4px"><button id="flSaveHD" class="btn-sm" style="font-size:9px;padding:0 6px;height:24px">保存</button><button id="flDelHD" class="btn-sm" style="font-size:9px;padding:0 6px;height:24px">删除</button></div>
 </div>
@@ -297,15 +295,13 @@ document.getElementById("flBasePreset").onclick=function(e){var b=e.target.close
 var flKGL="flGLdb",flKHD="flHDdb";
 function flG(k){try{var d=localStorage.getItem(k);if(!d)return[];var a=JSON.parse(d);if(a.length&&typeof a[0]==="string"){a=a.map(function(x){return{v:x}});localStorage.setItem(k,JSON.stringify(a))}return a}catch(e){return[]}}
 function flS(k,a){localStorage.setItem(k,JSON.stringify(a))}
-function flR(k,li,si){var a=flG(k);document.getElementById(li).innerHTML=a.map(function(x){return"<option value=\""+x.v+"\">"+x.v+"</option>"}).join("");document.getElementById(si).value=""}
+function flR(k,li){var a=flG(k);document.getElementById(li).innerHTML=a.map(function(x){return"<option value=\""+x.v+"\">"+x.v+"</option>"}).join("")}
 function flSv(k,i){var v=document.getElementById(i).value.trim();if(!v)return;var a=flG(k),f=false;for(var z=0;z<a.length;z++){if(a[z].v===v){f=true;break}}if(!f){a.push({v:v});flS(k,a)}}
 function flDl(k,i){var v=document.getElementById(i).value.trim();if(!v)return;if(!confirm("确定删除？"))return;var a=flG(k);for(var z=0;z<a.length;z++){if(a[z].v===v){a.splice(z,1);break}}flS(k,a)}
-document.getElementById("flSaveGL").onclick=function(){flSv(flKGL,"flLinkGL");flR(flKGL,"flListGL","flSelGL");document.getElementById("flLinkGL").value=""};
-document.getElementById("flDelGL").onclick=function(){flDl(flKGL,"flLinkGL");flR(flKGL,"flListGL","flSelGL")};
-document.getElementById("flSaveHD").onclick=function(){flSv(flKHD,"flLinkHD");flR(flKHD,"flListHD","flSelHD");document.getElementById("flLinkHD").value=""};
-document.getElementById("flDelHD").onclick=function(){flDl(flKHD,"flLinkHD");flR(flKHD,"flListHD","flSelHD")};
-document.getElementById("flSelGL").onchange=function(){var v=this.value;if(v)document.getElementById("flLinkGL").value=v};
-document.getElementById("flSelHD").onchange=function(){var v=this.value;if(v)document.getElementById("flLinkHD").value=v};
+document.getElementById("flSaveGL").onclick=function(){flSv(flKGL,"flLinkGL");flR(flKGL,"flListGL");document.getElementById("flLinkGL").value=""};
+document.getElementById("flDelGL").onclick=function(){flDl(flKGL,"flLinkGL");flR(flKGL,"flListGL")};
+document.getElementById("flSaveHD").onclick=function(){flSv(flKHD,"flLinkHD");flR(flKHD,"flListHD");document.getElementById("flLinkHD").value=""};
+document.getElementById("flDelHD").onclick=function(){flDl(flKHD,"flLinkHD");flR(flKHD,"flListHD")};
 document.getElementById("flGL").onchange=function(){if(this.checked)document.getElementById("flHD").checked=false};
 document.getElementById("flHD").onchange=function(){if(this.checked)document.getElementById("flGL").checked=false};
 
@@ -332,7 +328,7 @@ document.getElementById("delOldBtn").onclick=function(){var n=cleanOldEntries();
 document.getElementById("keepDays").onchange=function(){var v=parseInt(this.value);if(v>0){setKeepDays(v);document.getElementById("keepStatus").textContent="已设为 "+v+" 天"}};
 
 // Auto-cleanup and initial render
-rd();nt();bRP();flR(flKGL,"flListGL","flSelGL");flR(flKHD,"flListHD","flSelHD");document.getElementById("keepDays").value=getKeepDays();document.getElementById("keepStatus").textContent="记录保留 "+getKeepDays()+" 天"
+rd();nt();bRP();flR(flKGL,"flListGL");flR(flKHD,"flListHD");document.getElementById("keepDays").value=getKeepDays();document.getElementById("keepStatus").textContent="记录保留 "+getKeepDays()+" 天"
 })();
 </script>
 </body>
