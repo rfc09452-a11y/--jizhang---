@@ -121,6 +121,14 @@ td{padding:10px;border-bottom:1px solid #eee}.ar{text-align:right}.ac{text-align
 <div class="modal" id="rateModal"><div class="modal-inner">
 <div class="modal-hdr"><h2>管理费率</h2><button class="btn btn-o" id="closeMgr" style="height:30px;font-size:11px">关闭</button></div>
 
+<div style="display:flex;gap:6px;align-items:center;padding:6px 8px;background:#e8f0fe;border-radius:6px;margin-bottom:8px;font-size:11px">
+<span>时间费率快照</span>
+<input type="text" id="timeSnapInput" placeholder="粘贴时间费率消息" style="flex:1;height:24px;border:1px solid var(--bd);border-radius:4px;padding:0 6px;font-size:10px;outline:none">
+<button class="btn btn-o" id="saveTimeSnapBtn" style="height:24px;font-size:9px;padding:0 6px">保存快照</button>
+</div>
+<div style="font-size:10px;color:var(--t3);padding:0 8px;margin-bottom:4px" id="timeSnapStatus"></div>
+<div id="timeSnapList" style="max-height:80px;overflow-y:auto;margin-bottom:8px;padding:0 8px;font-size:11px"></div>
+
 <div style="display:flex;gap:8px">
 <textarea id="rateInput" style="flex:1;min-height:100px;border:1.5px solid var(--bd);border-radius:6px;padding:8px;font-size:11px;font-family:inherit;resize:vertical;outline:none;background:#fafbfc" placeholder="名称:0.xxx 每行一条"></textarea>
 <div style="display:flex;flex-direction:column;gap:4px;width:80px">
@@ -145,6 +153,13 @@ var defRates=[{g:"默认",items:[["普通","0.875"],["加速","0.88"],["超速",
 
 function ldR(){var d=localStorage.getItem(RK);if(d)try{return JSON.parse(d)}catch(e){}return JSON.parse(JSON.stringify(defRates))}
 function svR(d){localStorage.setItem(RK,JSON.stringify(d))}
+
+var tsKey="ldTs";function ldTS(){var d=localStorage.getItem(tsKey);return d?JSON.parse(d):[]}function svTS(a){localStorage.setItem(tsKey,JSON.stringify(a))}
+function parseTimeRates(txt){var lines=txt.split("\n");if(!lines.length)return null;var first=lines[0].trim();var timeMatch=first.match(/(\d{1,2}):(\d{2})/);if(!timeMatch)return null;var time=String(timeMatch[1]).padStart(2,"0")+":"+timeMatch[2];var rates=[];for(var i=1;i<lines.length;i++){var line=lines[i].trim();if(!line)continue;var name="",rate="";var colonIdx=line.indexOf("：");if(colonIdx<0)colonIdx=line.indexOf(":");if(colonIdx>=0){name=line.substring(0,colonIdx).trim();rate=line.substring(colonIdx+1).trim()}else{name=line;rate=line}rate=rate.replace(/[%％]/g,"").replace(/@所有人/g,"").replace(/通用/g,"");var r=parseFloat(rate);if(isNaN(r)){if(rate.length>=3){var last3=rate.slice(-3);r=parseFloat(last3);if(!isNaN(r)&&r>=800){name=rate.slice(0,-3).trim()||name;r=r/1000}}if(isNaN(r)){if(rate.length>=4){var last4=rate.slice(-4);r=parseFloat(last4);if(!isNaN(r)&&r>=8000){name=rate.slice(0,-4).trim()||name;r=r/10000}}}}if(!isNaN(r)){var rn=String(r);if(rn.length>=4&&rn.indexOf(".")<0){r=parseFloat(rn.slice(0,-3)+"."+rn.slice(-3))}rates.push([name,r])}}if(!rates.length)return null;return{time:time,rates:rates}}
+function saveTimeSnap(){var txt=document.getElementById("timeSnapInput").value;if(!txt.trim()){alert("请粘贴时间费率消息");return}var snap=parseTimeRates(txt);if(!snap){alert("未识别到时间和费率");return}var all=ldTS();var exists=false;for(var i=0;i<all.length;i++){if(all[i].time===snap.time){all[i]=snap;exists=true;break}}if(!exists)all.push(snap);all.sort(function(a,b){return a.time.localeCompare(b.time)});svTS(all);document.getElementById("timeSnapInput").value="";renderTimeSnapList();document.getElementById("timeSnapStatus").textContent="已保存 "+snap.time+" 的费率快照"}
+function renderTimeSnapList(){var all=ldTS(),list=document.getElementById("timeSnapList");if(!all.length){list.innerHTML='<div style="color:var(--t3)">暂无快照</div>';return}var h="";for(var i=0;i<all.length;i++){h+='<div style="display:flex;gap:8px;align-items:center;padding:2px 0;border-bottom:1px solid #eee;cursor:pointer" onclick="applyTimeSnap(\''+all[i].time+'\')"><span style="color:var(--p);font-weight:600">'+all[i].time+'</span><span style="color:var(--t3);font-size:10px">'+all[i].rates.length+'条</span><button class="btn-d" style="font-size:10px" onclick="event.stopPropagation();delTimeSnap(\''+all[i].time+'\')">&times;</button></div>'}list.innerHTML=h}
+function applyTimeSnap(time){var all=ldTS();for(var i=0;i<all.length;i++){if(all[i].time===time){var snap=all[i];var newRates=[{g:snap.time,items:snap.rates.map(function(r){return[r[0],String(r[1])]})}];svR(newRates);bRP();document.getElementById("rateModal").style.display="none";document.getElementById("t").value=time;return}}alert("未找到该时间的快照")}
+function delTimeSnap(time){if(!confirm("确定删除该快照？"))return;var all=ldTS();all=all.filter(function(s){return s.time!==time});svTS(all);renderTimeSnapList()}
 
 function bRP(){
   var data=ldR(),rp=document.getElementById("rp"),h="";
@@ -322,7 +337,7 @@ document.getElementById("impFile").onchange=function(e){var file=e.target.files[
 document.getElementById("clr").onclick=function(){if(!entries.length)return;var r=prompt("清空选项：\n输入天数(如3=清理3天前的数据)\n输入0或all=全清\n当前共"+entries.length+"条","3");if(r===null)return;var rr=r.trim();if(rr==="0"||rr.toLowerCase()==="all"){if(confirm("确定全清？")){entries=[];sv();rd()}return}var d=parseInt(rr);if(isNaN(d)||d<1){alert("请输入有效天数");return}var now=new Date(),cut=new Date(now);cut.setDate(cut.getDate()-d);var b=entries.length;entries=entries.filter(function(e){var ca=e.ca||"";if(!ca)return false;return new Date(ca)>=cut});if(entries.length<b){sv();rd();alert("已删除 "+(b-entries.length)+" 条，保留 "+entries.length+" 条")}else alert("没有超过 "+d+" 天的数据")};
 document.getElementById("dayFilter").onclick=function(e){var b=e.target.closest("button");if(!b)return;this.querySelectorAll("button").forEach(function(x){x.classList.remove("active")});b.classList.add("active");if(b.getAttribute("data-d")==="custom")document.getElementById("dayCustom").focus();var f=getFilteredEntries();document.getElementById("dayCount").textContent=f.length+"/"+entries.length+" 条"};
 document.getElementById("dayCustom").oninput=function(){document.getElementById("dayFilter").querySelectorAll("button").forEach(function(x){x.classList.remove("active")});var f=getFilteredEntries();document.getElementById("dayCount").textContent=f.length+"/"+entries.length+" 条"};
-document.getElementById("mgrBtn").onclick=function(){renderRatePreview();document.getElementById("rateInput").value="";var d=ldR();document.getElementById("rateCount").textContent="共 "+d.reduce(function(s,g){return s+g.items.length},0)+" 条费率";document.getElementById("rateModal").style.display="flex"};
+document.getElementById("mgrBtn").onclick=function(){renderRatePreview();document.getElementById("rateInput").value="";var d=ldR();document.getElementById("rateCount").textContent="共 "+d.reduce(function(s,g){return s+g.items.length},0)+" 条费率";renderTimeSnapList();document.getElementById("timeSnapStatus").textContent="";document.getElementById("rateModal").style.display="flex"};
 document.getElementById("closeMgr").onclick=function(){document.getElementById("rateModal").style.display="none"};
 document.getElementById("rateModal").onclick=function(e){if(e.target===this)this.style.display="none"};
 document.getElementById("importBtn").onclick=function(){navigator.clipboard.readText().then(function(t){document.getElementById("rateInput").value=t;var g=parseTxt(t);document.getElementById("rateCount").textContent="检测到 "+g.reduce(function(s,grp){return s+grp.items.length},0)+" 条"}).catch(function(){alert("无法读取剪贴板")})};
@@ -331,6 +346,8 @@ document.getElementById("resetRates").onclick=function(){if(!confirm("恢复默�
 document.getElementById("saveRates").onclick=function(){bRP();document.getElementById("rateModal").style.display="none"};
 document.getElementById("delOldBtn").onclick=function(){var n=cleanOldEntries();if(n>0){sv();rd();document.getElementById("keepStatus").textContent="已删除 "+n+" 条旧数据"}else document.getElementById("keepStatus").textContent="无过期数据（保留 "+getKeepDays()+" 天）"};
 document.getElementById("keepDays").onchange=function(){var v=parseInt(this.value);if(v>0){setKeepDays(v);document.getElementById("keepStatus").textContent="已设为 "+v+" 天"}};
+
+document.getElementById("saveTimeSnapBtn").onclick=saveTimeSnap;document.getElementById("t").onchange=function(){var v=this.value;if(!v)return;var all=ldTS();for(var i=0;i<all.length;i++){if(all[i].time===v){applyTimeSnap(v);return}}};
 
 // Auto-cleanup and initial render
 rd();nt();bRP();flR(flKGL,"flListGL");flR(flKHD,"flListHD");document.getElementById("keepDays").value=getKeepDays();document.getElementById("keepStatus").textContent="记录保留 "+getKeepDays()+" 天"
