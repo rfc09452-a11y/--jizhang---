@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>记账</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#f2f4f8;--card:#fff;--text:#1e1e2e;--t2:#5f6368;--t3:#9aa0a6;--bd:#e2e6ec;--p:#4f6ef7;--pb:#edf0ff;--g:#22c55e;--r:#ef4444}
@@ -111,9 +112,10 @@ td{padding:10px;border-bottom:1px solid #eee}.ar{text-align:right}.ac{text-align
 <div class="act">
 <button class="btn btn-g" id="expDOC">导出 Word</button>
 <button class="btn btn-o" id="expXLS">导出 Excel</button>
+<button class="btn btn-o" id="expJSON">导出 JSON</button>
 <button class="btn btn-o" id="cpSumBtn">复制返利汇总</button>
 <button class="btn btn-o" id="impBtn">导入数据</button>
-<input type="file" id="impFile" accept=".json" style="display:none">
+<input type="file" id="impFile" accept=".json,.xlsx,.xls" style="display:none">
 <button class="btn btn-o" id="clr">清空</button></div></div></div>
 
 <div class="modal" id="rateModal"><div class="modal-inner">
@@ -311,8 +313,10 @@ document.getElementById("addBtn").onclick=ad;
 document.getElementById("tb").onclick=function(e){var b=e.target.closest("[data-i]");if(b)dl(parseInt(b.getAttribute("data-i")))};
 document.getElementById("expDOC").onclick=dlDOC;
 document.getElementById("expXLS").onclick=dlXLS;
+function dlJSON(){var d={entries:entries};var b64=btoa(unescape(encodeURIComponent(JSON.stringify(d,null,2))));var a=document.createElement("a");a.href="data:text/json;base64,"+b64;a.download="记账记录_"+new Date().toISOString().slice(0,10)+".json";document.body.appendChild(a);a.click();document.body.removeChild(a)}
+document.getElementById("expJSON").onclick=dlJSON;
 document.getElementById("cpSumBtn").onclick=function(){var es=getFilteredEntries();if(!es.length){alert("所选日期无数据");return}var text=buildRebateText(es);function done(){alert("返利汇总已复制，可直接粘贴")}function fail(){var ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();try{document.execCommand("copy");alert("返利汇总已复制，可直接粘贴")}catch(e){alert("复制失败，请手动复制：\n\n"+text)}document.body.removeChild(ta)}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,fail)}else{fail()}};
-document.getElementById("impFile").onchange=function(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){try{var data=JSON.parse(ev.target.result);var arr=data.entries||(Array.isArray(data)?data:[data]);if(!arr.length){alert("未识别到有效数据");return}var mode=confirm("确定导入？\n\n点确定=追加到现有数据\n点取消=替换全部数据");if(mode){entries=entries.concat(arr)}else{entries=arr}sv();rd();alert("导入 "+arr.length+" 条记录");document.getElementById("impFile").value=""}catch(ex){alert("文件格式错误："+ex.message)}};reader.readAsText(file)};
+document.getElementById("impFile").onchange=function(e){var file=e.target.files[0];if(!file)return;var fn=file.name.toLowerCase();if(fn.endsWith(".json")){var reader=new FileReader();reader.onload=function(ev){try{var data=JSON.parse(ev.target.result);var arr=data.entries||(Array.isArray(data)?data:[data]);if(!arr.length){alert("未识别到有效数据");return}var mode=confirm("确定导入？\n\n点确定=追加到现有数据\n点取消=替换全部数据");if(mode){entries=entries.concat(arr)}else{entries=arr}sv();rd();alert("导入 "+arr.length+" 条记录");document.getElementById("impFile").value=""}catch(ex){alert("文件格式错误："+ex.message)}};reader.readAsText(file)}else if(fn.endsWith(".xlsx")||fn.endsWith(".xls")){var reader=new FileReader();reader.onload=function(ev){try{var wb=XLSX.read(ev.target.result,{type:"array"});var ws=wb.Sheets[wb.SheetNames[0]];var raw=XLSX.utils.sheet_to_json(ws);if(!raw.length){alert("Excel中没有数据");return}var arr=[];for(var i=0;i<raw.length;i++){var row=raw[i],e={};for(var k in row){if(k==="序号"||k==="#")continue;if(k==="时间"||k==="t")e.t=String(row[k]);else if(k==="花费"||k==="c")e.c=parseFloat(String(row[k]))||0;else if(k==="费率"||k==="r")e.r=parseFloat(String(row[k]))||0;else if(k==="收入"||k==="i")e.i=parseFloat(String(row[k]))||0;else if(k==="手续费"||k==="fr")e.fr=parseFloat(String(row[k]))||0;else if(k==="返利金额"||k==="fl"){}else if(k==="备注"||k==="fll")e.fll=String(row[k]);else if(k==="返利基数"||k==="flb")e.flb=parseFloat(String(row[k]))||0;else if(k==="返利率"||k==="flr")e.flr=parseFloat(String(row[k]))||0;else if(k==="费率名称"||k==="l")e.l=String(row[k])}e.ca=e.ca||new Date().toISOString();arr.push(e)}var mode=confirm("确定导入？\n\n点确定=追加到现有数据\n点取消=替换全部数据");if(mode){entries=entries.concat(arr)}else{entries=arr}sv();rd();alert("导入 "+arr.length+" 条记录");document.getElementById("impFile").value=""}catch(ex){alert("Excel解析失败："+ex.message)}};reader.readAsArrayBuffer(file)}};
 
 document.getElementById("clr").onclick=function(){if(!entries.length)return;var r=prompt("清空选项：\n输入天数(如3=清理3天前的数据)\n输入0或all=全清\n当前共"+entries.length+"条","3");if(r===null)return;var rr=r.trim();if(rr==="0"||rr.toLowerCase()==="all"){if(confirm("确定全清？")){entries=[];sv();rd()}return}var d=parseInt(rr);if(isNaN(d)||d<1){alert("请输入有效天数");return}var now=new Date(),cut=new Date(now);cut.setDate(cut.getDate()-d);var b=entries.length;entries=entries.filter(function(e){var ca=e.ca||"";if(!ca)return false;return new Date(ca)>=cut});if(entries.length<b){sv();rd();alert("已删除 "+(b-entries.length)+" 条，保留 "+entries.length+" 条")}else alert("没有超过 "+d+" 天的数据")};
 document.getElementById("dayFilter").onclick=function(e){var b=e.target.closest("button");if(!b)return;this.querySelectorAll("button").forEach(function(x){x.classList.remove("active")});b.classList.add("active");if(b.getAttribute("data-d")==="custom")document.getElementById("dayCustom").focus();var f=getFilteredEntries();document.getElementById("dayCount").textContent=f.length+"/"+entries.length+" 条"};
