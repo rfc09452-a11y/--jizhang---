@@ -162,13 +162,13 @@ function applySnapshot(snap){var newRates=snap.groups||[{g:snap.time,items:(snap
 
 function parseTimeRates(txt){var lines=txt.split(/\r?\n/);if(!lines.length)return null;var first=lines[0].trim();var timeMatch=first.match(/(\d{1,2})[:.](\d{2})/);if(!timeMatch)return null;var time=String(timeMatch[1]).padStart(2,"0")+":"+timeMatch[2];var groups=[{g:"",items:[]}];for(var i=1;i<lines.length;i++){var line=lines[i].trim();if(!line)continue;var colonIdx=line.indexOf("：");if(colonIdx<0)colonIdx=line.indexOf(":");if(colonIdx>=0){var name=line.substring(0,colonIdx).trim();var rate=line.substring(colonIdx+1).trim();rate=rate.replace(/[%％]/g,"").replace(/@所有人/g,"").replace(/通用/g,"");var r=parseFloat(rate);if(isNaN(r)){var numMatch=rate.match(/(\d{2,4})$/);if(numMatch){var num=numMatch[1];r=parseFloat(num);name=rate.replace(num,"").trim()||name}}if(!isNaN(r)){if(r>=80&&r<=99){r=r/100}else if(r>=800&&r<=999){r=r/1000}else if(r>=8000&&r<=9999){r=r/10000}groups[groups.length-1].items.push([name,String(r)])}}else{var numMatch=line.match(/(\d{2,4})$/);if(numMatch){var num=numMatch[1];var r=parseFloat(num);if(!isNaN(r)){var name=line.replace(num,"").trim();if(name.length>0||r>=80){if(r>=80&&r<=99){r=r/100}else if(r>=800&&r<=999){r=r/1000}else if(r>=8000&&r<=9999){r=r/10000}groups[groups.length-1].items.push([name||"",String(r)])}}continue}groups.push({g:line,items:[]})}}var hasRates=false;for(var g=0;g<groups.length;g++){if(groups[g].items.length>0){hasRates=true;break}}if(!hasRates)return null;if(groups[0].g===""&&groups[0].items.length===0){groups.shift()}return{date:getTodayStr(),time:time,groups:groups}}
 
-function saveTimeSnap(){var txt=document.getElementById("timeSnapInput").value;if(!txt.trim()){alert("请粘贴时间费率消息");return}var snap=parseTimeRates(txt);if(!snap){alert("未识别到时间和费率");return}var all=ldTS();var exists=false;for(var i=0;i<all.length;i++){if(all[i].date===snap.date&&all[i].time===snap.time){all[i]=snap;exists=true;break}}if(!exists)all.push(snap);all.sort(function(a,b){var d=a.date.localeCompare(b.date);return d?d:a.time.localeCompare(b.time)});svTS(all);applySnapshot(snap);document.getElementById("timeSnapInput").value="";renderTimeSnapList();document.getElementById("timeSnapStatus").textContent="已保存 "+snap.time+" 的费率快照并应用"}
+function saveTimeSnap(){var txt=document.getElementById("timeSnapInput").value;if(!txt.trim()){alert("请粘贴时间费率消息");return}var snap=parseTimeRates(txt);if(!snap){alert("未识别到时间和费率");return}var all=ldTS();var exists=false;for(var i=0;i<all.length;i++){if((all[i].date===snap.date&&all[i].time===snap.time)||(all[i].date===undefined&&all[i].time===snap.time)){all[i]=snap;exists=true;break}}if(!exists)all.push(snap);all.sort(function(a,b){var da=a.date||"",db=b.date||"";var d=da.localeCompare(db);return d?d:a.time.localeCompare(b.time)});svTS(all);applySnapshot(snap);document.getElementById("timeSnapInput").value="";renderTimeSnapList();document.getElementById("timeSnapStatus").textContent="已保存 "+snap.time+" 的费率快照并应用"}
 
-function renderTimeSnapList(){var all=ldTS(),list=document.getElementById("timeSnapList"),today=getTodayStr();if(!all.length){list.innerHTML='<div style="color:var(--t3)">暂无快照</div>';return}var h="";for(var i=all.length-1;i>=0;i--){var s=all[i],cnt=0,isToday=s.date===today;if(s.groups){for(var g=0;g<s.groups.length;g++)cnt+=s.groups[g].items.length}else if(s.rates){cnt=s.rates.length}var dateDisp=isToday?"":"("+s.date+")";h+='<div style="display:flex;gap:8px;align-items:center;padding:2px 0;border-bottom:1px solid #eee;cursor:pointer'+(isToday?"":"")+'" onclick="applyTimeSnap(\''+s.date+'\',\''+s.time+'\')"><span style="color:'+(isToday?"var(--p)":"var(--t3)")+';font-weight:600">'+s.time+dateDisp+'</span><span style="color:var(--t3);font-size:10px">'+cnt+'条</span><button class="btn-d" style="font-size:10px" onclick="event.stopPropagation();delTimeSnap(\''+s.date+'\',\''+s.time+'\')">&times;</button></div>'}list.innerHTML=h}
+function renderTimeSnapList(){var all=ldTS(),list=document.getElementById("timeSnapList"),today=getTodayStr();if(!all.length){list.innerHTML='<div style="color:var(--t3)">暂无快照</div>';return}var h="";for(var i=all.length-1;i>=0;i--){var s=all[i],cnt=0,isToday=s.date===today||s.date===undefined;if(s.groups){for(var g=0;g<s.groups.length;g++)cnt+=s.groups[g].items.length}else if(s.rates){cnt=s.rates.length}var dateDisp=s.date&&s.date!==today?"("+s.date+")":"";h+='<div style="display:flex;gap:8px;align-items:center;padding:2px 0;border-bottom:1px solid #eee;cursor:pointer'+(isToday?"":"")+'" onclick="applyTimeSnap(\''+s.date+'\',\''+s.time+'\')"><span style="color:'+(isToday?"var(--p)":"var(--t3)")+';font-weight:600">'+s.time+dateDisp+'</span><span style="color:var(--t3);font-size:10px">'+cnt+'条</span><button class="btn-d" style="font-size:10px" onclick="event.stopPropagation();delTimeSnap(\''+s.date+'\',\''+s.time+'\')">&times;</button></div>'}list.innerHTML=h}
 
-function applyTimeSnap(date,time){var all=ldTS();for(var i=0;i<all.length;i++){if(all[i].date===date&&all[i].time===time){applySnapshot(all[i]);document.getElementById("t").value=time;document.getElementById("rateModal").style.display="none";return}}alert("未找到该快照")}
+function applyTimeSnap(date,time){var all=ldTS();for(var i=0;i<all.length;i++){if((all[i].date===date&&all[i].time===time)||(all[i].date===undefined&&all[i].time===time)){applySnapshot(all[i]);document.getElementById("t").value=time;document.getElementById("rateModal").style.display="none";return}}alert("未找到该快照")}
 
-function delTimeSnap(date,time){if(!confirm("确定删除该快照？"))return;var all=ldTS();all=all.filter(function(s){return!(s.date===date&&s.time===time)});svTS(all);renderTimeSnapList()}
+function delTimeSnap(date,time){if(!confirm("确定删除该快照？"))return;var all=ldTS();all=all.filter(function(s){return!(s.date===date&&s.time===time)&&!(s.date===undefined&&s.time===time)});svTS(all);renderTimeSnapList()}
 
 function bRP(){
   var data=ldR(),rp=document.getElementById("rp"),h="";
@@ -184,13 +184,21 @@ function bRP(){
 }
 
 function parseTxt(txt){
-  var gs=[{g:"",items:[]}],lines=txt.split("\n");
+  var gs=[{g:"",items:[]}],lines=txt.split(/\r?\n/);
   for(var k=0;k<lines.length;k++){
     var line=lines[k].trim();if(!line)continue;
     var idx=line.indexOf("：");if(idx<0)idx=line.indexOf(":");
-    if(idx<0){var last=gs[gs.length-1];if(last.g===""&&last.items.length===0)last.g=line;else gs.push({g:line,items:[]});continue}
-    var name=line.substring(0,idx).trim(),val=line.substring(idx+1).trim().replace(/[%％]/g,""),r=parseFloat(val);
-    if(!isNaN(r))gs[gs.length-1].items.push([name,String(r)]);else gs.push({g:name,items:[]})
+    if(idx>=0){var name=line.substring(0,idx).trim(),val=line.substring(idx+1).trim().replace(/[%％]/g,""),r=parseFloat(val);
+      if(!isNaN(r)){if(r>=80&&r<=99)r=r/100;else if(r>=800&&r<=999)r=r/1000;else if(r>=8000&&r<=9999)r=r/10000;gs[gs.length-1].items.push([name,String(r)])}else gs.push({g:name,items:[]})
+    }else{
+      var numMatch=line.match(/(\d{2,4})$/);
+      if(numMatch){var num=numMatch[1],r=parseFloat(num);
+        if(!isNaN(r)){var name=line.replace(num,"").trim();
+          if(r>=80&&r<=99)r=r/100;else if(r>=800&&r<=999)r=r/1000;else if(r>=8000&&r<=9999)r=r/10000;
+          gs[gs.length-1].items.push([name||"",String(r)])
+        }else{var last=gs[gs.length-1];if(last.g===""&&last.items.length===0)last.g=line;else gs.push({g:line,items:[]})}
+      }else{var last=gs[gs.length-1];if(last.g===""&&last.items.length===0)last.g=line;else gs.push({g:line,items:[]})}
+    }
   }
   if(gs.length&&!gs[0].g&&!gs[0].items.length)gs.shift();
   return gs.length?gs:[{g:"",items:[]}]
